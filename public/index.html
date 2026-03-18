@@ -478,6 +478,7 @@
                 </div>
                 <p id="bulk-status" style="font-size:13px;color:var(--text-dim);margin-top:8px;"></p>
               </div>
+              <div id="bulk-results-log" style="margin-top:16px;display:none;max-height:500px;overflow-y:auto;"></div>
             </div>
           </div>
         </div>
@@ -633,6 +634,16 @@
       return intToIp((rnd & 0xFFFFFF00) | last);
     }
 
+    // ── Client-side push log (localStorage) ──────
+    function savePushLog(entry) {
+      const log = JSON.parse(localStorage.getItem('crm_push_log') || '[]');
+      log.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), timestamp: new Date().toISOString(), ...entry });
+      if (log.length > 5000) log.length = 5000;
+      localStorage.setItem('crm_push_log', JSON.stringify(log));
+    }
+    function getPushLog() { return JSON.parse(localStorage.getItem('crm_push_log') || '[]'); }
+    function clearPushLog() { localStorage.removeItem('crm_push_log'); }
+
     // ── Direct push to MediaNow (from browser, uses YOUR IP) ──
     async function directPushToMediaNow(leadData) {
       const body = new URLSearchParams();
@@ -683,47 +694,51 @@
       return data;
     }
 
-    // ── Dashboard ─────────────────────────────
-    async function loadDashboard() {
-      try {
-        const stats = await api('log?view=stats');
-        document.getElementById('stat-total').textContent = stats.total || 0;
-        document.getElementById('stat-today').textContent = stats.today || 0;
-        document.getElementById('stat-success').textContent = stats.todaySuccess || 0;
-        document.getElementById('stat-errors').textContent = stats.todayError || 0;
+    // ── Dashboard (reads from localStorage) ────
+    function loadDashboard() {
+      const log = getPushLog();
+      const today = new Date().toISOString().slice(0, 10);
+      const todayEntries = log.filter(e => e.timestamp?.startsWith(today));
 
-        // Broker stats
-        const brokerDiv = document.getElementById('broker-stats');
-        if (stats.byBroker && Object.keys(stats.byBroker).length > 0) {
-          brokerDiv.innerHTML = '<table><thead><tr><th>Broker</th><th>Total</th><th>Success</th><th>Errors</th><th>Rate</th></tr></thead><tbody>' +
-            Object.entries(stats.byBroker).map(([name, s]) =>
-              `<tr><td><span class="badge badge-broker">${name}</span></td><td>${s.total}</td><td>${s.success}</td><td>${s.error}</td><td>${s.total ? Math.round(s.success / s.total * 100) : 0}%</td></tr>`
-            ).join('') + '</tbody></table>';
-        } else {
-          brokerDiv.innerHTML = '<div class="empty-state"><p>No push data yet</p></div>';
-        }
+      document.getElementById('stat-total').textContent = log.length;
+      document.getElementById('stat-today').textContent = todayEntries.length;
+      document.getElementById('stat-success').textContent = todayEntries.filter(e => e.status === 'success').length;
+      document.getElementById('stat-errors').textContent = todayEntries.filter(e => e.status === 'error').length;
 
-        // Recent pushes
-        const logData = await api('log?limit=10');
-        renderRecentPushes(logData.items || []);
-      } catch (e) {
-        console.error('Dashboard error:', e);
+      // Broker stats
+      const byBroker = {};
+      for (const e of log) {
+        const b = e.broker || 'unknown';
+        if (!byBroker[b]) byBroker[b] = { total: 0, success: 0, error: 0 };
+        byBroker[b].total++;
+        byBroker[b][e.status || 'error']++;
       }
-    }
 
-    function renderRecentPushes(items) {
+      const brokerDiv = document.getElementById('broker-stats');
+      if (Object.keys(byBroker).length > 0) {
+        brokerDiv.innerHTML = '<table><thead><tr><th>Broker</th><th>Total</th><th>Success</th><th>Errors</th><th>Rate</th></tr></thead><tbody>' +
+          Object.entries(byBroker).map(([name, s]) =>
+            `<tr><td><span class="badge badge-broker">${name}</span></td><td>${s.total}</td><td>${s.success}</td><td>${s.error}</td><td>${s.total ? Math.round(s.success / s.total * 100) : 0}%</td></tr>`
+          ).join('') + '</tbody></table>';
+      } else {
+        brokerDiv.innerHTML = '<div class="empty-state"><p>No push data yet</p></div>';
+      }
+
+      // Recent pushes
+      const recent = log.slice(0, 10);
       const div = document.getElementById('recent-pushes');
-      if (!items.length) {
+      if (!recent.length) {
         div.innerHTML = '<div class="empty-state"><p>No pushes yet. Go to Push Lead to get started.</p></div>';
         return;
       }
-      div.innerHTML = '<table><thead><tr><th>Time</th><th>Broker</th><th>Email</th><th>Status</th><th>Details</th></tr></thead><tbody>' +
-        items.map(e => `<tr>
+      div.innerHTML = '<table><thead><tr><th>Time</th><th>Email</th><th>Country</th><th>IP</th><th>Status</th><th>Details</th></tr></thead><tbody>' +
+        recent.map(e => `<tr>
           <td>${new Date(e.timestamp).toLocaleString()}</td>
-          <td><span class="badge badge-broker">${e.broker}</span></td>
-          <td>${e.lead?.email || '-'}</td>
+          <td>${e.email || '-'}</td>
+          <td>${e.country || '-'}</td>
+          <td style="font-family:monospace;font-size:11px">${e.ip || '-'}</td>
           <td><span class="badge badge-${e.status}">${e.status}</span></td>
-          <td>${e.status === 'success' ? (e.advertiser || '-') : (e.error || '-').slice(0, 50)}</td>
+          <td>${e.status === 'success' ? (e.advertiser || 'OK') : (e.error || '-').slice(0, 60)}</td>
         </tr>`).join('') + '</tbody></table>';
     }
 
@@ -752,13 +767,17 @@
 
         if (httpCode === 200 || httpCode === 201) {
           toast('Lead pushed successfully!');
+          savePushLog({ status: 'success', broker: 'medianow', email: lead.email, country: countryCode, ip: lead.ip, advertiser: result?.details?.advertiser?.name, leadRequestID: result?.details?.leadRequest?.ID });
           resultDiv.innerHTML = `<div class="json-viewer">${JSON.stringify({ status: 'success', ip: lead.ip, ...result }, null, 2)}</div>`;
         } else {
-          toast(result.message || 'Push failed', 'error');
+          const errMsg = result?.message || JSON.stringify(result).slice(0, 200);
+          toast(errMsg, 'error');
+          savePushLog({ status: 'error', broker: 'medianow', email: lead.email, country: countryCode, ip: lead.ip, error: errMsg });
           resultDiv.innerHTML = `<div class="json-viewer" style="color:var(--error)">${JSON.stringify(result, null, 2)}</div>`;
         }
       } catch (err) {
         toast(err.message, 'error');
+        savePushLog({ status: 'error', broker: 'medianow', email: lead.email, country: countryCode, ip: lead.ip, error: err.message });
         resultDiv.innerHTML = `<div class="json-viewer" style="color:var(--error)">${err.message}</div>`;
       }
 
@@ -822,25 +841,51 @@
       progressDiv.style.display = 'block';
 
       let success = 0, errors = 0;
+      const pushResults = [];
+      const resultsLog = document.getElementById('bulk-results-log');
+      resultsLog.style.display = 'block';
+      resultsLog.innerHTML = '<table><thead><tr><th>#</th><th>Email</th><th>Country</th><th>IP</th><th>Status</th><th>Details</th></tr></thead><tbody id="bulk-log-body"></tbody></table>';
+      const logBody = document.getElementById('bulk-log-body');
 
       // Direct push from browser — each lead gets IP from its 'country' column
       for (let i = 0; i < csvLeads.length; i++) {
+        const lead = { ...csvLeads[i] };
+        const cc = (lead.country || '').toUpperCase();
+        const email = lead.email || '-';
+        delete lead.country;
+
+        // Auto-fill password & IP per-lead
+        if (!lead.password) lead.password = STATIC_PASSWORD;
+        if (!lead.ip && cc) lead.ip = generateIP(cc);
+        const usedIP = lead.ip || '-';
+
+        let status = 'error', details = '';
         try {
-          const lead = { ...csvLeads[i] };
-          const cc = (lead.country || '').toUpperCase();
-          delete lead.country; // don't send 'country' to MediaNow
-
-          // Auto-fill password & IP per-lead
-          if (!lead.password) lead.password = STATIC_PASSWORD;
-          if (!lead.ip && cc) lead.ip = generateIP(cc);
-
           const result = await directPushToMediaNow(lead);
           const httpCode = result?.server?.httpCode;
-          if (httpCode === 200 || httpCode === 201) success++;
-          else errors++;
+          if (httpCode === 200 || httpCode === 201) {
+            success++;
+            status = 'success';
+            details = result?.details?.advertiser?.name || result?.details?.redirect?.url || 'OK';
+            savePushLog({ status: 'success', broker: 'medianow', email, country: cc, ip: usedIP, advertiser: details, leadRequestID: result?.details?.leadRequest?.ID });
+          } else {
+            errors++;
+            details = result?.message || JSON.stringify(result?.details || result).slice(0, 120);
+            savePushLog({ status: 'error', broker: 'medianow', email, country: cc, ip: usedIP, error: details });
+          }
         } catch (e) {
           errors++;
+          details = e.message || 'Network error';
+          savePushLog({ status: 'error', broker: 'medianow', email, country: cc, ip: usedIP, error: details });
         }
+
+        // Add row to live log
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${i+1}</td><td>${email}</td><td>${cc}</td><td style="font-family:monospace;font-size:11px">${usedIP}</td><td><span class="badge badge-${status}">${status}</span></td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${details}</td>`;
+        logBody.appendChild(row);
+
+        // Scroll to latest
+        resultsLog.scrollTop = resultsLog.scrollHeight;
 
         const progress = ((i + 1) / csvLeads.length) * 100;
         bar.style.width = progress + '%';
@@ -908,40 +953,43 @@
       }
     });
 
-    // ── Push Log ──────────────────────────────
+    // ── Push Log (reads from localStorage) ─────
     let logPage = 1;
 
-    async function loadLog(page = 1) {
+    function loadLog(page = 1) {
       logPage = page;
-      const status = document.getElementById('log-status-filter').value;
+      const statusFilter = document.getElementById('log-status-filter').value;
       const div = document.getElementById('log-table');
-      div.innerHTML = '<div class="loading">Loading...</div>';
+      let log = getPushLog();
 
-      try {
-        const data = await api(`log?page=${page}&limit=25${status ? `&status=${status}` : ''}`);
-        const items = data.items || [];
-        if (!items.length) { div.innerHTML = '<div class="empty-state"><p>No log entries yet</p></div>'; return; }
+      if (statusFilter) log = log.filter(e => e.status === statusFilter);
 
-        div.innerHTML = '<table><thead><tr><th>Time</th><th>ID</th><th>Broker</th><th>Email</th><th>Status</th><th>Details</th></tr></thead><tbody>' +
-          items.map(e => `<tr>
-            <td style="white-space:nowrap">${new Date(e.timestamp).toLocaleString()}</td>
-            <td style="font-family:monospace;font-size:11px">${e.id}</td>
-            <td><span class="badge badge-broker">${e.broker}</span></td>
-            <td>${e.lead?.email || '-'}</td>
-            <td><span class="badge badge-${e.status}">${e.status}</span></td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.status === 'success' ? (e.advertiser || e.leadRequestID || '-') : (e.error || '-')}</td>
-          </tr>`).join('') + '</tbody></table>';
+      const perPage = 25;
+      const total = log.length;
+      const pages = Math.ceil(total / perPage) || 1;
+      const start = (page - 1) * perPage;
+      const items = log.slice(start, start + perPage);
 
-        // Pagination
-        const pag = document.getElementById('log-pagination');
-        pag.innerHTML = `
-          <button ${page <= 1 ? 'disabled' : ''} onclick="loadLog(${page - 1})">Prev</button>
-          <span>Page ${data.page} of ${data.pages}</span>
-          <button ${page >= data.pages ? 'disabled' : ''} onclick="loadLog(${page + 1})">Next</button>
-        `;
-      } catch (err) {
-        div.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${err.message}</p></div>`;
-      }
+      if (!items.length) { div.innerHTML = '<div class="empty-state"><p>No log entries yet. Push some leads first.</p></div>'; document.getElementById('log-pagination').innerHTML = ''; return; }
+
+      div.innerHTML = '<table><thead><tr><th>Time</th><th>Email</th><th>Country</th><th>IP</th><th>Broker</th><th>Status</th><th>Details</th></tr></thead><tbody>' +
+        items.map(e => `<tr>
+          <td style="white-space:nowrap">${new Date(e.timestamp).toLocaleString()}</td>
+          <td>${e.email || '-'}</td>
+          <td>${e.country || '-'}</td>
+          <td style="font-family:monospace;font-size:11px">${e.ip || '-'}</td>
+          <td><span class="badge badge-broker">${e.broker || '-'}</span></td>
+          <td><span class="badge badge-${e.status}">${e.status}</span></td>
+          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.status === 'success' ? (e.advertiser || e.leadRequestID || 'OK') : (e.error || '-')}</td>
+        </tr>`).join('') + '</tbody></table>';
+
+      const pag = document.getElementById('log-pagination');
+      pag.innerHTML = `
+        <button ${page <= 1 ? 'disabled' : ''} onclick="loadLog(${page - 1})">Prev</button>
+        <span>Page ${page} of ${pages} (${total} entries)</span>
+        <button ${page >= pages ? 'disabled' : ''} onclick="loadLog(${page + 1})">Next</button>
+        <button onclick="if(confirm('Clear all logs?')){clearPushLog();loadLog();}" style="margin-left:16px;color:var(--error)">Clear Log</button>
+      `;
     }
 
     document.getElementById('log-refresh-btn').addEventListener('click', () => loadLog(logPage));
