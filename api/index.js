@@ -3,6 +3,7 @@
  * Vercel Hobby plan allows max 12 serverless functions.
  */
 
+const https = require('https');
 const medianow = require('./lib/medianow');
 const { getBroker, listBrokers } = require('./lib/brokers');
 const { addEntry, getEntries, getStats } = require('./lib/push-log');
@@ -88,6 +89,25 @@ const routes = {
   // GET /api/supported-countries — list countries with IP generation support
   'GET /supported-countries': async (req, res) => {
     return res.status(200).json({ countries: getSupportedCountries() });
+  },
+
+  // GET /api/server-ip — shows the outbound IP that needs whitelisting with brokers
+  'GET /server-ip': async (req, res) => {
+    return new Promise((resolve) => {
+      https.get('https://api.ipify.org?format=json', (resp) => {
+        let data = '';
+        resp.on('data', chunk => data += chunk);
+        resp.on('end', () => {
+          try {
+            const ip = JSON.parse(data).ip;
+            res.status(200).json({ serverIP: ip, message: 'Whitelist this IP with MediaNow' });
+          } catch (e) {
+            res.status(500).json({ error: 'Could not determine IP' });
+          }
+          resolve();
+        });
+      }).on('error', (e) => { res.status(500).json({ error: e.message }); resolve(); });
+    });
   },
 
   // GET /api/leads
