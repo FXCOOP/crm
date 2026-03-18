@@ -86,6 +86,23 @@ const routes = {
     return res.status(result.status === 'success' ? 200 : 400).json(result);
   },
 
+  // POST /api/push-direct — takes a fully-formed lead object (IP already set by client)
+  // and pushes directly to MediaNow. No broker routing, no IP generation server-side.
+  'POST /push-direct': async (req, res) => {
+    const lead = req.body || {};
+    if (!lead.email) return res.status(400).json({ error: 'Missing email' });
+
+    // Auto-fill password if not set
+    if (!lead.password) lead.password = STATIC_PASSWORD;
+
+    try {
+      const result = await medianow.registerLead(lead);
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(err.status || 500).json({ error: err.message, message: err.message, response: err.response });
+    }
+  },
+
   // GET /api/supported-countries — list countries with IP generation support
   'GET /supported-countries': async (req, res) => {
     return res.status(200).json({ countries: getSupportedCountries() });

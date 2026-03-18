@@ -644,18 +644,12 @@
     function getPushLog() { return JSON.parse(localStorage.getItem('crm_push_log') || '[]'); }
     function clearPushLog() { localStorage.removeItem('crm_push_log'); }
 
-    // ── Direct push to MediaNow (from browser, uses YOUR IP) ──
-    async function directPushToMediaNow(leadData) {
-      const body = new URLSearchParams();
-      Object.entries(leadData).forEach(([k, v]) => { if (v) body.append(k, v); });
-
-      const res = await fetch(MEDIANOW_URL + '/api/v2/leads', {
+    // ── Push via server API (generates IP client-side, sends to server) ──
+    async function pushLead(leadData) {
+      const res = await fetch(API + '/api/push-direct', {
         method: 'POST',
-        headers: {
-          'Api-Key': MEDIANOW_KEY,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: body.toString(),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(leadData),
       });
       return res.json();
     }
@@ -762,15 +756,16 @@
       resultDiv.style.display = 'block';
 
       try {
-        const result = await directPushToMediaNow(lead);
+        const result = await pushLead(lead);
         const httpCode = result?.server?.httpCode;
+        const ok = httpCode === 200 || httpCode === 201;
 
-        if (httpCode === 200 || httpCode === 201) {
+        if (ok) {
           toast('Lead pushed successfully!');
           savePushLog({ status: 'success', broker: 'medianow', email: lead.email, country: countryCode, ip: lead.ip, advertiser: result?.details?.advertiser?.name, leadRequestID: result?.details?.leadRequest?.ID });
           resultDiv.innerHTML = `<div class="json-viewer">${JSON.stringify({ status: 'success', ip: lead.ip, ...result }, null, 2)}</div>`;
         } else {
-          const errMsg = result?.message || JSON.stringify(result).slice(0, 200);
+          const errMsg = result?.message || result?.error || JSON.stringify(result).slice(0, 200);
           toast(errMsg, 'error');
           savePushLog({ status: 'error', broker: 'medianow', email: lead.email, country: countryCode, ip: lead.ip, error: errMsg });
           resultDiv.innerHTML = `<div class="json-viewer" style="color:var(--error)">${JSON.stringify(result, null, 2)}</div>`;
@@ -861,7 +856,7 @@
 
         let status = 'error', details = '';
         try {
-          const result = await directPushToMediaNow(lead);
+          const result = await pushLead(lead);
           const httpCode = result?.server?.httpCode;
           if (httpCode === 200 || httpCode === 201) {
             success++;
@@ -870,7 +865,7 @@
             savePushLog({ status: 'success', broker: 'medianow', email, country: cc, ip: usedIP, advertiser: details, leadRequestID: result?.details?.leadRequest?.ID });
           } else {
             errors++;
-            details = result?.message || JSON.stringify(result?.details || result).slice(0, 120);
+            details = result?.message || result?.error || JSON.stringify(result?.details || result).slice(0, 120);
             savePushLog({ status: 'error', broker: 'medianow', email, country: cc, ip: usedIP, error: details });
           }
         } catch (e) {
