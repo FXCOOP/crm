@@ -560,7 +560,10 @@
 
   <script>
     // ── Config ────────────────────────────────
-    const API = window.location.origin;
+    // Auto-detect: if running on localhost, use local server (YOUR IP)
+    const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? window.location.origin
+      : window.location.origin;
     const MEDIANOW_URL = 'https://365-medianow-api.com';
     const MEDIANOW_KEY = '0FE9567B-C447-2100-03E4-FA049CAB04C1';
     const STATIC_PASSWORD = 'Broker2026!x';
