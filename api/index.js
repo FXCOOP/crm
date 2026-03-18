@@ -55,8 +55,9 @@ async function pushSingle(brokerId, brokerConfig, handler, lead, countryCode) {
 const routes = {
   // POST /api/push
   // Body: { broker, lead, leads, countryCode }
-  // countryCode (e.g. "GB", "DE") auto-generates geo-matched IPs
+  // countryCode can be global (fallback) or per-lead via lead.country field
   // password is auto-filled with static password if missing
+  // IP is auto-generated from the lead's country (per-lead) or global countryCode
   'POST /push': async (req, res) => {
     const { broker: brokerId, lead, leads, countryCode } = req.body || {};
     if (!brokerId) return res.status(400).json({ error: 'Missing broker field' });
@@ -67,13 +68,20 @@ const routes = {
     if (Array.isArray(leads) && leads.length > 0) {
       const results = [];
       for (const singleLead of leads.slice(0, 100)) {
-        results.push(await pushSingle(brokerId, brokerConfig, handler, { ...singleLead }, countryCode));
+        const leadCopy = { ...singleLead };
+        // Per-lead country takes priority, then global fallback
+        const cc = leadCopy.country || countryCode;
+        delete leadCopy.country; // don't send 'country' to MediaNow API
+        results.push(await pushSingle(brokerId, brokerConfig, handler, leadCopy, cc));
       }
       return res.status(200).json({ results, count: results.length });
     }
 
     if (!lead) return res.status(400).json({ error: 'Missing lead or leads field' });
-    const result = await pushSingle(brokerId, brokerConfig, handler, { ...lead }, countryCode);
+    const leadCopy = { ...lead };
+    const cc = leadCopy.country || countryCode;
+    delete leadCopy.country;
+    const result = await pushSingle(brokerId, brokerConfig, handler, leadCopy, cc);
     return res.status(result.status === 'success' ? 200 : 400).json(result);
   },
 

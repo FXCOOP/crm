@@ -455,35 +455,16 @@
         <div class="panel">
           <div class="panel-header">
             <h3>CSV Upload</h3>
-            <div style="display:flex;gap:10px;align-items:center;">
-              <select id="bulk-broker-select" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
-                <option value="medianow">MediaNow</option>
-              </select>
-              <select id="bulk-country-select" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
-                <option value="">Country for IP...</option>
-                <option value="GB">🇬🇧 UK</option><option value="DE">🇩🇪 DE</option><option value="FR">🇫🇷 FR</option>
-                <option value="IT">🇮🇹 IT</option><option value="ES">🇪🇸 ES</option><option value="PT">🇵🇹 PT</option>
-                <option value="NL">🇳🇱 NL</option><option value="BE">🇧🇪 BE</option><option value="AT">🇦🇹 AT</option>
-                <option value="CH">🇨🇭 CH</option><option value="IE">🇮🇪 IE</option><option value="SE">🇸🇪 SE</option>
-                <option value="NO">🇳🇴 NO</option><option value="DK">🇩🇰 DK</option><option value="FI">🇫🇮 FI</option>
-                <option value="PL">🇵🇱 PL</option><option value="CZ">🇨🇿 CZ</option><option value="RO">🇷🇴 RO</option>
-                <option value="HU">🇭🇺 HU</option><option value="GR">🇬🇷 GR</option><option value="AE">🇦🇪 AE</option>
-                <option value="SA">🇸🇦 SA</option><option value="IL">🇮🇱 IL</option><option value="AU">🇦🇺 AU</option>
-                <option value="NZ">🇳🇿 NZ</option><option value="SG">🇸🇬 SG</option><option value="JP">🇯🇵 JP</option>
-                <option value="KR">🇰🇷 KR</option><option value="IN">🇮🇳 IN</option><option value="US">🇺🇸 US</option>
-                <option value="CA">🇨🇦 CA</option><option value="BR">🇧🇷 BR</option><option value="MX">🇲🇽 MX</option>
-                <option value="ZA">🇿🇦 ZA</option><option value="RU">🇷🇺 RU</option><option value="UA">🇺🇦 UA</option>
-                <option value="TH">🇹🇭 TH</option><option value="VN">🇻🇳 VN</option><option value="PH">🇵🇭 PH</option>
-                <option value="MY">🇲🇾 MY</option><option value="ID">🇮🇩 ID</option>
-              </select>
-            </div>
+            <select id="bulk-broker-select" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+              <option value="medianow">MediaNow</option>
+            </select>
           </div>
           <div class="panel-body">
             <div class="csv-drop" id="csv-drop">
               <input type="file" id="csv-file" accept=".csv">
               <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
               <p style="margin-top:12px">Drop a CSV file here or click to browse</p>
-              <p style="font-size:12px;margin-top:6px">Required columns: email, firstName, lastName, phone &nbsp;|&nbsp; Password &amp; IP auto-generated</p>
+              <p style="font-size:12px;margin-top:6px">Required columns: email, firstName, lastName, phone, country (e.g. GB, DE, PT) &nbsp;|&nbsp; Password &amp; IP auto-generated per country</p>
             </div>
             <div id="csv-preview" style="margin-top:16px;display:none;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -747,8 +728,7 @@
       if (!csvLeads.length) return;
 
       const broker = document.getElementById('bulk-broker-select').value;
-      const countryCode = document.getElementById('bulk-country-select').value;
-      if (!countryCode) { toast('Select a country for IP generation', 'error'); return; }
+      // Country comes from each lead's 'country' column in CSV — IP generated per-lead
       const progressDiv = document.getElementById('bulk-progress');
       const bar = document.getElementById('bulk-bar');
       const statusText = document.getElementById('bulk-status');
@@ -761,7 +741,7 @@
         try {
           const result = await api('push', {
             method: 'POST',
-            body: JSON.stringify({ broker, lead: csvLeads[i], countryCode }),
+            body: JSON.stringify({ broker, lead: csvLeads[i] }),
           });
           if (result.status === 'success') success++;
           else errors++;
