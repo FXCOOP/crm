@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM Lead Pusher</title>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --surface: #111827;
+      --surface-2: #1a2332;
+      --border: #1e2d3d;
+      --text: #e2e8f0;
+      --text-dim: #8892a4;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --error: #ef4444;
+      --warn: #f59e0b;
+      --radius: 10px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Layout ─────────────────────────────── */
+    .app { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 10;
+    }
+
+    .sidebar .logo {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar .logo span { color: var(--accent); }
+
+    .nav-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s;
+    }
+
+    .nav-item:hover { background: var(--surface-2); color: var(--text); }
+    .nav-item.active { background: var(--accent); color: #fff; }
+    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .main {
+      flex: 1;
+      margin-left: 240px;
+      padding: 32px;
+    }
+
+    /* ── Cards ──────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .stat-card .label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+    .stat-card .value.success { color: var(--success); }
+    .stat-card .value.error { color: var(--error); }
+
+    /* ── Panels ─────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-header h3 { font-size: 15px; font-weight: 600; }
+    .panel-body { padding: 20px; }
+
+    /* ── Form ───────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    .form-group label {
+      font-size: 12px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border 0.15s;
+    }
+
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .form-group textarea { resize: vertical; min-height: 80px; }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+
+    /* ── Table ──────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 14px; text-align: left; font-size: 13px; }
+    th { color: var(--text-dim); font-weight: 500; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+    td { border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(59,130,246,0.04); }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-success { background: rgba(16,185,129,0.15); color: var(--success); }
+    .badge-error { background: rgba(239,68,68,0.15); color: var(--error); }
+    .badge-broker { background: rgba(59,130,246,0.15); color: var(--accent); }
+
+    /* ── Sections ───────────────────────────── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    /* ── Bulk ───────────────────────────────── */
+    .csv-drop {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .csv-drop:hover, .csv-drop.dragover { border-color: var(--accent); color: var(--text); }
+    .csv-drop input { display: none; }
+
+    /* ── Toast ──────────────────────────────── */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      animation: slideIn 0.3s ease;
+      min-width: 280px;
+    }
+
+    .toast-success { background: rgba(16,185,129,0.2); border: 1px solid var(--success); color: var(--success); }
+    .toast-error { background: rgba(239,68,68,0.2); border: 1px solid var(--error); color: var(--error); }
+
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Pagination ─────────────────────────── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      justify-content: center;
+    }
+
+    .pagination button {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pagination span { color: var(--text-dim); font-size: 13px; }
+
+    /* ── Responsive ─────────────────────────── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+
+    .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.4; }
+    .empty-state p { font-size: 14px; }
+
+    .loading { text-align: center; padding: 40px; color: var(--text-dim); }
+
+    /* ── JSON viewer ────────────────────────── */
+    .json-viewer {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 400px;
+      overflow-y: auto;
+      color: var(--success);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span>CRM</span> Pusher
+      </div>
+      <div class="nav-item active" data-section="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" data-section="push-lead">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Push Lead
+      </div>
+      <div class="nav-item" data-section="bulk-push">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg>
+        Bulk Push
+      </div>
+      <div class="nav-item" data-section="leads-view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Leads
+      </div>
+      <div class="nav-item" data-section="conversions-view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Conversions
+      </div>
+      <div class="nav-item" data-section="push-log">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+        Push Log
+      </div>
+      <div class="nav-item" data-section="offers-view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Offers
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Dashboard -->
+      <section id="dashboard" class="section active">
+        <h2 class="section-title">Dashboard</h2>
+        <div class="stats-row" id="stats-cards">
+          <div class="stat-card"><div class="label">Total Pushes</div><div class="value" id="stat-total">--</div></div>
+          <div class="stat-card"><div class="label">Today</div><div class="value" id="stat-today">--</div></div>
+          <div class="stat-card"><div class="label">Successful</div><div class="value success" id="stat-success">--</div></div>
+          <div class="stat-card"><div class="label">Errors</div><div class="value error" id="stat-errors">--</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Broker Performance</h3></div>
+          <div class="panel-body" id="broker-stats">
+            <div class="loading">Loading stats...</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Recent Pushes</h3></div>
+          <div class="panel-body" id="recent-pushes">
+            <div class="loading">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Push Lead -->
+      <section id="push-lead" class="section">
+        <h2 class="section-title">Push Lead</h2>
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Lead Details</h3>
+            <select id="broker-select" class="form-group" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+              <option value="medianow">MediaNow</option>
+            </select>
+          </div>
+          <div class="panel-body">
+            <form id="push-form">
+              <div class="form-grid">
+                <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
+                <div class="form-group"><label>First Name *</label><input type="text" name="firstName" required></div>
+                <div class="form-group"><label>Last Name *</label><input type="text" name="lastName" required></div>
+                <div class="form-group"><label>Password *</label><input type="text" name="password" required></div>
+                <div class="form-group"><label>IP Address *</label><input type="text" name="ip" required placeholder="e.g. 1.1.1.1"></div>
+                <div class="form-group"><label>Phone *</label><input type="tel" name="phone" required></div>
+                <div class="form-group"><label>Area Code</label><input type="text" name="areaCode" placeholder="e.g. 44"></div>
+                <div class="form-group"><label>Offer Name</label><input type="text" name="offerName"></div>
+                <div class="form-group"><label>Offer Website</label><input type="text" name="offerWebsite"></div>
+                <div class="form-group"><label>Locale</label><input type="text" name="locale" placeholder="e.g. en_US"></div>
+                <div class="form-group"><label>Custom 1</label><input type="text" name="custom1"></div>
+                <div class="form-group"><label>Custom 2</label><input type="text" name="custom2"></div>
+                <div class="form-group"><label>Custom 3</label><input type="text" name="custom3"></div>
+                <div class="form-group"><label>Custom 4</label><input type="text" name="custom4"></div>
+                <div class="form-group full"><label>Custom 5</label><input type="text" name="custom5"></div>
+                <div class="form-group full"><label>Comment</label><textarea name="comment"></textarea></div>
+              </div>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary" id="push-btn">Push Lead</button>
+                <button type="reset" class="btn btn-secondary">Clear</button>
+              </div>
+            </form>
+            <div id="push-result" style="margin-top:16px;display:none;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bulk Push -->
+      <section id="bulk-push" class="section">
+        <h2 class="section-title">Bulk Push</h2>
+        <div class="panel">
+          <div class="panel-header">
+            <h3>CSV Upload</h3>
+            <select id="bulk-broker-select" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+              <option value="medianow">MediaNow</option>
+            </select>
+          </div>
+          <div class="panel-body">
+            <div class="csv-drop" id="csv-drop">
+              <input type="file" id="csv-file" accept=".csv">
+              <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              <p style="margin-top:12px">Drop a CSV file here or click to browse</p>
+              <p style="font-size:12px;margin-top:6px">Required columns: email, firstName, lastName, password, ip, phone</p>
+            </div>
+            <div id="csv-preview" style="margin-top:16px;display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <span id="csv-count" style="color:var(--text-dim);font-size:14px;"></span>
+                <button class="btn btn-primary" id="bulk-push-btn">Push All Leads</button>
+              </div>
+              <div style="overflow-x:auto;" id="csv-table-wrap"></div>
+              <div id="bulk-progress" style="margin-top:16px;display:none;">
+                <div style="background:var(--border);border-radius:8px;height:8px;overflow:hidden;">
+                  <div id="bulk-bar" style="background:var(--accent);height:100%;width:0%;transition:width 0.3s;"></div>
+                </div>
+                <p id="bulk-status" style="font-size:13px;color:var(--text-dim);margin-top:8px;"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Leads View -->
+      <section id="leads-view" class="section">
+        <h2 class="section-title">Leads</h2>
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Lead Records</h3>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <input type="date" id="leads-from" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+              <input type="date" id="leads-to" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+              <button class="btn btn-primary" id="leads-fetch-btn">Fetch</button>
+            </div>
+          </div>
+          <div class="panel-body" id="leads-table">
+            <div class="empty-state"><p>Select a date range and click Fetch</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Conversions View -->
+      <section id="conversions-view" class="section">
+        <h2 class="section-title">Conversions</h2>
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Conversion Records</h3>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <input type="date" id="conv-from" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+              <input type="date" id="conv-to" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+              <button class="btn btn-primary" id="conv-fetch-btn">Fetch</button>
+            </div>
+          </div>
+          <div class="panel-body" id="conversions-table">
+            <div class="empty-state"><p>Select a date range and click Fetch</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Push Log -->
+      <section id="push-log" class="section">
+        <h2 class="section-title">Push Log</h2>
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Activity Log</h3>
+            <div style="display:flex;gap:10px;">
+              <select id="log-status-filter" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+                <option value="">All Status</option>
+                <option value="success">Success</option>
+                <option value="error">Error</option>
+              </select>
+              <button class="btn btn-secondary" id="log-refresh-btn">Refresh</button>
+            </div>
+          </div>
+          <div class="panel-body" id="log-table">
+            <div class="loading">Loading...</div>
+          </div>
+          <div id="log-pagination" class="pagination"></div>
+        </div>
+      </section>
+
+      <!-- Offers View -->
+      <section id="offers-view" class="section">
+        <h2 class="section-title">Offers</h2>
+        <div class="panel">
+          <div class="panel-header"><h3>Available Offers</h3><button class="btn btn-primary" id="offers-fetch-btn">Load Offers</button></div>
+          <div class="panel-body" id="offers-table">
+            <div class="empty-state"><p>Click Load Offers to fetch from MediaNow</p></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toasts"></div>
+
+  <script>
+    // ── Config ────────────────────────────────
+    const API = window.location.origin; // works on Vercel
+
+    // ── Navigation ────────────────────────────
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        item.classList.add('active');
+        const target = item.dataset.section;
+        document.getElementById(target).classList.add('active');
+        if (target === 'dashboard') loadDashboard();
+        if (target === 'push-log') loadLog();
+      });
+    });
+
+    // ── Toast ─────────────────────────────────
+    function toast(msg, type = 'success') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.getElementById('toasts').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    // ── API Helper ────────────────────────────
+    async function api(path, opts = {}) {
+      const url = `${API}/api/${path}`;
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json', ...opts.headers },
+        ...opts,
+      });
+      const data = await res.json();
+      if (!res.ok && !data) throw new Error(`HTTP ${res.status}`);
+      return data;
+    }
+
+    // ── Dashboard ─────────────────────────────
+    async function loadDashboard() {
+      try {
+        const stats = await api('log?view=stats');
+        document.getElementById('stat-total').textContent = stats.total || 0;
+        document.getElementById('stat-today').textContent = stats.today || 0;
+        document.getElementById('stat-success').textContent = stats.todaySuccess || 0;
+        document.getElementById('stat-errors').textContent = stats.todayError || 0;
+
+        // Broker stats
+        const brokerDiv = document.getElementById('broker-stats');
+        if (stats.byBroker && Object.keys(stats.byBroker).length > 0) {
+          brokerDiv.innerHTML = '<table><thead><tr><th>Broker</th><th>Total</th><th>Success</th><th>Errors</th><th>Rate</th></tr></thead><tbody>' +
+            Object.entries(stats.byBroker).map(([name, s]) =>
+              `<tr><td><span class="badge badge-broker">${name}</span></td><td>${s.total}</td><td>${s.success}</td><td>${s.error}</td><td>${s.total ? Math.round(s.success / s.total * 100) : 0}%</td></tr>`
+            ).join('') + '</tbody></table>';
+        } else {
+          brokerDiv.innerHTML = '<div class="empty-state"><p>No push data yet</p></div>';
+        }
+
+        // Recent pushes
+        const logData = await api('log?limit=10');
+        renderRecentPushes(logData.items || []);
+      } catch (e) {
+        console.error('Dashboard error:', e);
+      }
+    }
+
+    function renderRecentPushes(items) {
+      const div = document.getElementById('recent-pushes');
+      if (!items.length) {
+        div.innerHTML = '<div class="empty-state"><p>No pushes yet. Go to Push Lead to get started.</p></div>';
+        return;
+      }
+      div.innerHTML = '<table><thead><tr><th>Time</th><th>Broker</th><th>Email</th><th>Status</th><th>Details</th></tr></thead><tbody>' +
+        items.map(e => `<tr>
+          <td>${new Date(e.timestamp).toLocaleString()}</td>
+          <td><span class="badge badge-broker">${e.broker}</span></td>
+          <td>${e.lead?.email || '-'}</td>
+          <td><span class="badge badge-${e.status}">${e.status}</span></td>
+          <td>${e.status === 'success' ? (e.advertiser || '-') : (e.error || '-').slice(0, 50)}</td>
+        </tr>`).join('') + '</tbody></table>';
+    }
+
+    // ── Push Lead Form ────────────────────────
+    document.getElementById('push-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('push-btn');
+      btn.disabled = true;
+      btn.textContent = 'Pushing...';
+
+      const form = new FormData(e.target);
+      const lead = {};
+      form.forEach((v, k) => { if (v) lead[k] = v; });
+
+      const broker = document.getElementById('broker-select').value;
+
+      try {
+        const result = await api('push', {
+          method: 'POST',
+          body: JSON.stringify({ broker, lead }),
+        });
+
+        const resultDiv = document.getElementById('push-result');
+        resultDiv.style.display = 'block';
+
+        if (result.status === 'success') {
+          toast('Lead pushed successfully!');
+          resultDiv.innerHTML = `<div class="json-viewer">${JSON.stringify(result, null, 2)}</div>`;
+        } else {
+          toast(result.error || 'Push failed', 'error');
+          resultDiv.innerHTML = `<div class="json-viewer" style="color:var(--error)">${JSON.stringify(result, null, 2)}</div>`;
+        }
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Push Lead';
+    });
+
+    // ── CSV Bulk Push ─────────────────────────
+    const csvDrop = document.getElementById('csv-drop');
+    const csvFile = document.getElementById('csv-file');
+    let csvLeads = [];
+
+    csvDrop.addEventListener('click', () => csvFile.click());
+    csvDrop.addEventListener('dragover', e => { e.preventDefault(); csvDrop.classList.add('dragover'); });
+    csvDrop.addEventListener('dragleave', () => csvDrop.classList.remove('dragover'));
+    csvDrop.addEventListener('drop', e => {
+      e.preventDefault();
+      csvDrop.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) parseCSV(e.dataTransfer.files[0]);
+    });
+    csvFile.addEventListener('change', () => { if (csvFile.files[0]) parseCSV(csvFile.files[0]); });
+
+    function parseCSV(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const lines = e.target.result.split('\n').filter(l => l.trim());
+        if (lines.length < 2) { toast('CSV must have header + at least 1 row', 'error'); return; }
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        csvLeads = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+          const lead = {};
+          headers.forEach((h, idx) => { if (values[idx]) lead[h] = values[idx]; });
+          csvLeads.push(lead);
+        }
+
+        document.getElementById('csv-count').textContent = `${csvLeads.length} leads loaded`;
+        document.getElementById('csv-preview').style.display = 'block';
+
+        // Preview table (first 10)
+        const preview = csvLeads.slice(0, 10);
+        document.getElementById('csv-table-wrap').innerHTML =
+          '<table><thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>' +
+          preview.map(l => '<tr>' + headers.map(h => `<td>${l[h] || '-'}</td>`).join('') + '</tr>').join('') +
+          '</tbody></table>' +
+          (csvLeads.length > 10 ? `<p style="margin-top:8px;color:var(--text-dim);font-size:12px;">Showing 10 of ${csvLeads.length}</p>` : '');
+
+        toast(`${csvLeads.length} leads parsed from CSV`);
+      };
+      reader.readAsText(file);
+    }
+
+    document.getElementById('bulk-push-btn').addEventListener('click', async () => {
+      if (!csvLeads.length) return;
+
+      const broker = document.getElementById('bulk-broker-select').value;
+      const progressDiv = document.getElementById('bulk-progress');
+      const bar = document.getElementById('bulk-bar');
+      const statusText = document.getElementById('bulk-status');
+      progressDiv.style.display = 'block';
+
+      let success = 0, errors = 0;
+
+      // Push in batches of 5 to avoid rate limits
+      for (let i = 0; i < csvLeads.length; i++) {
+        try {
+          const result = await api('push', {
+            method: 'POST',
+            body: JSON.stringify({ broker, lead: csvLeads[i] }),
+          });
+          if (result.status === 'success') success++;
+          else errors++;
+        } catch (e) {
+          errors++;
+        }
+
+        const progress = ((i + 1) / csvLeads.length) * 100;
+        bar.style.width = progress + '%';
+        statusText.textContent = `${i + 1}/${csvLeads.length} processed — ${success} success, ${errors} errors`;
+      }
+
+      toast(`Bulk push complete: ${success} success, ${errors} errors`, errors > 0 ? 'error' : 'success');
+    });
+
+    // ── Leads View ────────────────────────────
+    document.getElementById('leads-fetch-btn').addEventListener('click', async () => {
+      const from = document.getElementById('leads-from').value;
+      const to = document.getElementById('leads-to').value;
+      if (!from || !to) { toast('Select date range', 'error'); return; }
+
+      const div = document.getElementById('leads-table');
+      div.innerHTML = '<div class="loading">Fetching leads...</div>';
+
+      try {
+        const data = await api(`leads?fromDate=${from}+00:00:00&toDate=${to}+23:59:59`);
+        const items = data.items || [];
+        if (!items.length) { div.innerHTML = '<div class="empty-state"><p>No leads found</p></div>'; return; }
+
+        div.innerHTML = '<table><thead><tr><th>Date</th><th>Email</th><th>Country</th><th>Campaign</th><th>Status</th><th>FTD</th></tr></thead><tbody>' +
+          items.map(l => `<tr>
+            <td>${l.signupDate || '-'}</td>
+            <td>${l.customerID || '-'}</td>
+            <td>${l.countryCode || '-'} ${l.countryName || ''}</td>
+            <td>${l.campaignName || '-'}</td>
+            <td>${l.saleStatus || '-'}</td>
+            <td>${l.hasFTD ? '<span class="badge badge-success">Yes</span>' : 'No'}</td>
+          </tr>`).join('') + '</tbody></table>' +
+          `<p style="margin-top:8px;color:var(--text-dim);font-size:12px">${data.total?.items || items.length} total leads</p>`;
+      } catch (err) {
+        div.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${err.message}</p></div>`;
+      }
+    });
+
+    // ── Conversions View ──────────────────────
+    document.getElementById('conv-fetch-btn').addEventListener('click', async () => {
+      const from = document.getElementById('conv-from').value;
+      const to = document.getElementById('conv-to').value;
+      if (!from || !to) { toast('Select date range', 'error'); return; }
+
+      const div = document.getElementById('conversions-table');
+      div.innerHTML = '<div class="loading">Fetching conversions...</div>';
+
+      try {
+        const data = await api(`conversions?fromDate=${from}+00:00:00&toDate=${to}+23:59:59`);
+        const items = data.items || [];
+        if (!items.length) { div.innerHTML = '<div class="empty-state"><p>No conversions found</p></div>'; return; }
+
+        div.innerHTML = '<table><thead><tr><th>Date</th><th>Email</th><th>Amount</th><th>Country</th><th>Campaign</th><th>Qualified</th></tr></thead><tbody>' +
+          items.map(c => `<tr>
+            <td>${c.depositDate || '-'}</td>
+            <td>${c.customerID || '-'}</td>
+            <td>${c.currency || '$'}${c.amount || 0}</td>
+            <td>${c.countryCode || '-'} ${c.countryName || ''}</td>
+            <td>${c.campaignName || '-'}</td>
+            <td>${c.qualified ? '<span class="badge badge-success">Yes</span>' : 'No'}</td>
+          </tr>`).join('') + '</tbody></table>' +
+          `<p style="margin-top:8px;color:var(--text-dim);font-size:12px">${data.total?.items || items.length} total conversions</p>`;
+      } catch (err) {
+        div.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${err.message}</p></div>`;
+      }
+    });
+
+    // ── Push Log ──────────────────────────────
+    let logPage = 1;
+
+    async function loadLog(page = 1) {
+      logPage = page;
+      const status = document.getElementById('log-status-filter').value;
+      const div = document.getElementById('log-table');
+      div.innerHTML = '<div class="loading">Loading...</div>';
+
+      try {
+        const data = await api(`log?page=${page}&limit=25${status ? `&status=${status}` : ''}`);
+        const items = data.items || [];
+        if (!items.length) { div.innerHTML = '<div class="empty-state"><p>No log entries yet</p></div>'; return; }
+
+        div.innerHTML = '<table><thead><tr><th>Time</th><th>ID</th><th>Broker</th><th>Email</th><th>Status</th><th>Details</th></tr></thead><tbody>' +
+          items.map(e => `<tr>
+            <td style="white-space:nowrap">${new Date(e.timestamp).toLocaleString()}</td>
+            <td style="font-family:monospace;font-size:11px">${e.id}</td>
+            <td><span class="badge badge-broker">${e.broker}</span></td>
+            <td>${e.lead?.email || '-'}</td>
+            <td><span class="badge badge-${e.status}">${e.status}</span></td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.status === 'success' ? (e.advertiser || e.leadRequestID || '-') : (e.error || '-')}</td>
+          </tr>`).join('') + '</tbody></table>';
+
+        // Pagination
+        const pag = document.getElementById('log-pagination');
+        pag.innerHTML = `
+          <button ${page <= 1 ? 'disabled' : ''} onclick="loadLog(${page - 1})">Prev</button>
+          <span>Page ${data.page} of ${data.pages}</span>
+          <button ${page >= data.pages ? 'disabled' : ''} onclick="loadLog(${page + 1})">Next</button>
+        `;
+      } catch (err) {
+        div.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${err.message}</p></div>`;
+      }
+    }
+
+    document.getElementById('log-refresh-btn').addEventListener('click', () => loadLog(logPage));
+    document.getElementById('log-status-filter').addEventListener('change', () => loadLog(1));
+
+    // ── Offers View ───────────────────────────
+    document.getElementById('offers-fetch-btn').addEventListener('click', async () => {
+      const div = document.getElementById('offers-table');
+      div.innerHTML = '<div class="loading">Loading offers...</div>';
+
+      try {
+        const data = await api('offers');
+        const items = data.data?.items || [];
+        if (!items.length) { div.innerHTML = '<div class="empty-state"><p>No offers found</p></div>'; return; }
+
+        div.innerHTML = '<table><thead><tr><th>ID</th><th>Name</th><th>Website</th><th>Verticals</th><th>Commissions</th></tr></thead><tbody>' +
+          items.map(o => `<tr>
+            <td>${o.id}</td>
+            <td>${o.name || '-'}</td>
+            <td>${o.website ? `<a href="${o.website}" target="_blank" style="color:var(--accent)">${o.website}</a>` : '-'}</td>
+            <td>${(o.verticals || []).map(v => v.name).join(', ') || '-'}</td>
+            <td>${(o.commissions || []).map(c => `${c.countryName}: ${c.commisionAmount}`).join('<br>') || '-'}</td>
+          </tr>`).join('') + '</tbody></table>';
+      } catch (err) {
+        div.innerHTML = `<div class="empty-state"><p style="color:var(--error)">${err.message}</p></div>`;
+      }
+    });
+
+    // ── Set default dates ─────────────────────
+    const today = new Date().toISOString().slice(0, 10);
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    document.getElementById('leads-from').value = weekAgo;
+    document.getElementById('leads-to').value = today;
+    document.getElementById('conv-from').value = weekAgo;
+    document.getElementById('conv-to').value = today;
+
+    // ── Init ──────────────────────────────────
+    loadDashboard();
+  </script>
+</body>
+</html>

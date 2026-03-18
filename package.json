@@ -1,0 +1,14 @@
+{
+  "name": "crm-lead-pusher",
+  "version": "1.0.0",
+  "description": "Multi-broker CRM lead pusher with MediaNow API integration",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "start": "node api/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
