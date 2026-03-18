@@ -735,7 +735,8 @@
           <td>${e.country || '-'}</td>
           <td style="font-family:monospace;font-size:11px">${e.ip || '-'}</td>
           <td><span class="badge badge-${e.status}">${e.status}</span></td>
-          <td>${e.status === 'success' ? (e.advertiser || 'OK') : (e.error || '-').slice(0, 60)}</td>
+          <td style="cursor:pointer" title="Click to see full response" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'table-row':'none'">${e.status === 'success' ? (e.advertiser || 'OK') : (e.error || '-').slice(0, 60)}</td>
+        </tr><tr style="display:none"><td colspan="6"><div class="json-viewer" style="max-height:200px;font-size:11px">${e.rawResponse ? JSON.stringify(JSON.parse(e.rawResponse),null,2) : 'No raw response'}</div></td>
         </tr>`).join('') + '</tbody></table>';
     }
 
@@ -765,7 +766,7 @@
 
         if (ok) {
           toast('Lead pushed successfully!');
-          savePushLog({ status: 'success', broker: 'medianow', email: lead.email, country: countryCode, ip: lead.ip, advertiser: result?.details?.advertiser?.name, leadRequestID: result?.details?.leadRequest?.ID });
+          savePushLog({ status: 'success', broker: 'medianow', email: lead.email, country: countryCode, ip: lead.ip, advertiser: result?.details?.advertiser?.name, leadRequestID: result?.details?.leadRequest?.ID, rawResponse: JSON.stringify(result) });
           resultDiv.innerHTML = `<div class="json-viewer">${JSON.stringify({ status: 'success', ip: lead.ip, ...result }, null, 2)}</div>`;
         } else {
           const errMsg = result?.message || result?.error || JSON.stringify(result).slice(0, 200);
@@ -865,11 +866,11 @@
             success++;
             status = 'success';
             details = result?.details?.advertiser?.name || result?.details?.redirect?.url || 'OK';
-            savePushLog({ status: 'success', broker: 'medianow', email, country: cc, ip: usedIP, advertiser: details, leadRequestID: result?.details?.leadRequest?.ID });
+            savePushLog({ status: 'success', broker: 'medianow', email, country: cc, ip: usedIP, advertiser: details, leadRequestID: result?.details?.leadRequest?.ID, rawResponse: JSON.stringify(result) });
           } else {
             errors++;
-            details = result?.message || result?.error || JSON.stringify(result?.details || result).slice(0, 120);
-            savePushLog({ status: 'error', broker: 'medianow', email, country: cc, ip: usedIP, error: details });
+            details = result?.message || result?.error || JSON.stringify(result?.details || result).slice(0, 200);
+            savePushLog({ status: 'error', broker: 'medianow', email, country: cc, ip: usedIP, error: details, rawResponse: JSON.stringify(result) });
           }
         } catch (e) {
           errors++;
@@ -978,7 +979,8 @@
           <td style="font-family:monospace;font-size:11px">${e.ip || '-'}</td>
           <td><span class="badge badge-broker">${e.broker || '-'}</span></td>
           <td><span class="badge badge-${e.status}">${e.status}</span></td>
-          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.status === 'success' ? (e.advertiser || e.leadRequestID || 'OK') : (e.error || '-')}</td>
+          <td style="max-width:250px;cursor:pointer" title="Click to see full response" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'table-row':'none'">${e.status === 'success' ? (e.advertiser || e.leadRequestID || 'OK') : (e.error || '-')}</td>
+        </tr><tr style="display:none"><td colspan="7"><div class="json-viewer" style="max-height:200px;font-size:11px">${e.rawResponse ? JSON.stringify(JSON.parse(e.rawResponse),null,2) : 'No raw response saved'}</div></td>
         </tr>`).join('') + '</tbody></table>';
 
       const pag = document.getElementById('log-pagination');
