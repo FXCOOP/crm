@@ -378,10 +378,57 @@
                 <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
                 <div class="form-group"><label>First Name *</label><input type="text" name="firstName" required></div>
                 <div class="form-group"><label>Last Name *</label><input type="text" name="lastName" required></div>
-                <div class="form-group"><label>Password *</label><input type="text" name="password" required></div>
-                <div class="form-group"><label>IP Address *</label><input type="text" name="ip" required placeholder="e.g. 1.1.1.1"></div>
                 <div class="form-group"><label>Phone *</label><input type="tel" name="phone" required></div>
+                <div class="form-group">
+                  <label>Country (for IP) *</label>
+                  <select name="countryCode" id="push-country" required>
+                    <option value="">Select country...</option>
+                    <option value="GB">🇬🇧 United Kingdom</option>
+                    <option value="DE">🇩🇪 Germany</option>
+                    <option value="FR">🇫🇷 France</option>
+                    <option value="IT">🇮🇹 Italy</option>
+                    <option value="ES">🇪🇸 Spain</option>
+                    <option value="PT">🇵🇹 Portugal</option>
+                    <option value="NL">🇳🇱 Netherlands</option>
+                    <option value="BE">🇧🇪 Belgium</option>
+                    <option value="AT">🇦🇹 Austria</option>
+                    <option value="CH">🇨🇭 Switzerland</option>
+                    <option value="IE">🇮🇪 Ireland</option>
+                    <option value="SE">🇸🇪 Sweden</option>
+                    <option value="NO">🇳🇴 Norway</option>
+                    <option value="DK">🇩🇰 Denmark</option>
+                    <option value="FI">🇫🇮 Finland</option>
+                    <option value="PL">🇵🇱 Poland</option>
+                    <option value="CZ">🇨🇿 Czech Republic</option>
+                    <option value="RO">🇷🇴 Romania</option>
+                    <option value="HU">🇭🇺 Hungary</option>
+                    <option value="GR">🇬🇷 Greece</option>
+                    <option value="AE">🇦🇪 UAE</option>
+                    <option value="SA">🇸🇦 Saudi Arabia</option>
+                    <option value="IL">🇮🇱 Israel</option>
+                    <option value="AU">🇦🇺 Australia</option>
+                    <option value="NZ">🇳🇿 New Zealand</option>
+                    <option value="SG">🇸🇬 Singapore</option>
+                    <option value="JP">🇯🇵 Japan</option>
+                    <option value="KR">🇰🇷 South Korea</option>
+                    <option value="IN">🇮🇳 India</option>
+                    <option value="US">🇺🇸 United States</option>
+                    <option value="CA">🇨🇦 Canada</option>
+                    <option value="BR">🇧🇷 Brazil</option>
+                    <option value="MX">🇲🇽 Mexico</option>
+                    <option value="ZA">🇿🇦 South Africa</option>
+                    <option value="RU">🇷🇺 Russia</option>
+                    <option value="UA">🇺🇦 Ukraine</option>
+                    <option value="TH">🇹🇭 Thailand</option>
+                    <option value="VN">🇻🇳 Vietnam</option>
+                    <option value="PH">🇵🇭 Philippines</option>
+                    <option value="MY">🇲🇾 Malaysia</option>
+                    <option value="ID">🇮🇩 Indonesia</option>
+                  </select>
+                </div>
                 <div class="form-group"><label>Area Code</label><input type="text" name="areaCode" placeholder="e.g. 44"></div>
+                <div class="form-group"><label>Password (auto: Broker2026!x)</label><input type="text" name="password" placeholder="Auto-filled if empty"></div>
+                <div class="form-group"><label>IP (auto-generated from country)</label><input type="text" name="ip" placeholder="Auto-generated from country"></div>
                 <div class="form-group"><label>Offer Name</label><input type="text" name="offerName"></div>
                 <div class="form-group"><label>Offer Website</label><input type="text" name="offerWebsite"></div>
                 <div class="form-group"><label>Locale</label><input type="text" name="locale" placeholder="e.g. en_US"></div>
@@ -408,16 +455,35 @@
         <div class="panel">
           <div class="panel-header">
             <h3>CSV Upload</h3>
-            <select id="bulk-broker-select" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
-              <option value="medianow">MediaNow</option>
-            </select>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <select id="bulk-broker-select" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+                <option value="medianow">MediaNow</option>
+              </select>
+              <select id="bulk-country-select" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+                <option value="">Country for IP...</option>
+                <option value="GB">🇬🇧 UK</option><option value="DE">🇩🇪 DE</option><option value="FR">🇫🇷 FR</option>
+                <option value="IT">🇮🇹 IT</option><option value="ES">🇪🇸 ES</option><option value="PT">🇵🇹 PT</option>
+                <option value="NL">🇳🇱 NL</option><option value="BE">🇧🇪 BE</option><option value="AT">🇦🇹 AT</option>
+                <option value="CH">🇨🇭 CH</option><option value="IE">🇮🇪 IE</option><option value="SE">🇸🇪 SE</option>
+                <option value="NO">🇳🇴 NO</option><option value="DK">🇩🇰 DK</option><option value="FI">🇫🇮 FI</option>
+                <option value="PL">🇵🇱 PL</option><option value="CZ">🇨🇿 CZ</option><option value="RO">🇷🇴 RO</option>
+                <option value="HU">🇭🇺 HU</option><option value="GR">🇬🇷 GR</option><option value="AE">🇦🇪 AE</option>
+                <option value="SA">🇸🇦 SA</option><option value="IL">🇮🇱 IL</option><option value="AU">🇦🇺 AU</option>
+                <option value="NZ">🇳🇿 NZ</option><option value="SG">🇸🇬 SG</option><option value="JP">🇯🇵 JP</option>
+                <option value="KR">🇰🇷 KR</option><option value="IN">🇮🇳 IN</option><option value="US">🇺🇸 US</option>
+                <option value="CA">🇨🇦 CA</option><option value="BR">🇧🇷 BR</option><option value="MX">🇲🇽 MX</option>
+                <option value="ZA">🇿🇦 ZA</option><option value="RU">🇷🇺 RU</option><option value="UA">🇺🇦 UA</option>
+                <option value="TH">🇹🇭 TH</option><option value="VN">🇻🇳 VN</option><option value="PH">🇵🇭 PH</option>
+                <option value="MY">🇲🇾 MY</option><option value="ID">🇮🇩 ID</option>
+              </select>
+            </div>
           </div>
           <div class="panel-body">
             <div class="csv-drop" id="csv-drop">
               <input type="file" id="csv-file" accept=".csv">
               <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
               <p style="margin-top:12px">Drop a CSV file here or click to browse</p>
-              <p style="font-size:12px;margin-top:6px">Required columns: email, firstName, lastName, password, ip, phone</p>
+              <p style="font-size:12px;margin-top:6px">Required columns: email, firstName, lastName, phone &nbsp;|&nbsp; Password &amp; IP auto-generated</p>
             </div>
             <div id="csv-preview" style="margin-top:16px;display:none;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -601,14 +667,15 @@
 
       const form = new FormData(e.target);
       const lead = {};
-      form.forEach((v, k) => { if (v) lead[k] = v; });
+      const countryCode = form.get('countryCode') || '';
+      form.forEach((v, k) => { if (v && k !== 'countryCode') lead[k] = v; });
 
       const broker = document.getElementById('broker-select').value;
 
       try {
         const result = await api('push', {
           method: 'POST',
-          body: JSON.stringify({ broker, lead }),
+          body: JSON.stringify({ broker, lead, countryCode }),
         });
 
         const resultDiv = document.getElementById('push-result');
@@ -680,6 +747,8 @@
       if (!csvLeads.length) return;
 
       const broker = document.getElementById('bulk-broker-select').value;
+      const countryCode = document.getElementById('bulk-country-select').value;
+      if (!countryCode) { toast('Select a country for IP generation', 'error'); return; }
       const progressDiv = document.getElementById('bulk-progress');
       const bar = document.getElementById('bulk-bar');
       const statusText = document.getElementById('bulk-status');
@@ -687,12 +756,12 @@
 
       let success = 0, errors = 0;
 
-      // Push in batches of 5 to avoid rate limits
+      // Push one by one — each gets a unique random IP for that country
       for (let i = 0; i < csvLeads.length; i++) {
         try {
           const result = await api('push', {
             method: 'POST',
-            body: JSON.stringify({ broker, lead: csvLeads[i] }),
+            body: JSON.stringify({ broker, lead: csvLeads[i], countryCode }),
           });
           if (result.status === 'success') success++;
           else errors++;

@@ -6,6 +6,10 @@
 const medianow = require('./lib/medianow');
 const { getBroker, listBrokers } = require('./lib/brokers');
 const { addEntry, getEntries, getStats } = require('./lib/push-log');
+const { generateCountryIP, getSupportedCountries } = require('./lib/country-ips');
+
+const STATIC_PASSWORD = 'Broker2026!x';
+
 
 // ── Broker push handlers ─────────────────────
 const pushHandlers = {
@@ -22,7 +26,15 @@ const pushHandlers = {
   },
 };
 
-async function pushSingle(brokerId, brokerConfig, handler, lead) {
+async function pushSingle(brokerId, brokerConfig, handler, lead, countryCode) {
+  // Auto-fill password if not provided
+  if (!lead.password) lead.password = STATIC_PASSWORD;
+
+  // Auto-generate country-specific IP if not provided
+  if (!lead.ip && countryCode) {
+    lead.ip = generateCountryIP(countryCode);
+  }
+
   const missing = brokerConfig.requiredFields.filter(f => !lead[f]);
   if (missing.length > 0) {
     const entry = addEntry({ broker: brokerId, status: 'error', error: `Missing required fields: ${missing.join(', ')}`, lead: { email: lead.email || 'unknown' } });
@@ -42,8 +54,11 @@ async function pushSingle(brokerId, brokerConfig, handler, lead) {
 
 const routes = {
   // POST /api/push
+  // Body: { broker, lead, leads, countryCode }
+  // countryCode (e.g. "GB", "DE") auto-generates geo-matched IPs
+  // password is auto-filled with static password if missing
   'POST /push': async (req, res) => {
-    const { broker: brokerId, lead, leads } = req.body || {};
+    const { broker: brokerId, lead, leads, countryCode } = req.body || {};
     if (!brokerId) return res.status(400).json({ error: 'Missing broker field' });
     const brokerConfig = getBroker(brokerId);
     const handler = pushHandlers[brokerId];
@@ -52,14 +67,19 @@ const routes = {
     if (Array.isArray(leads) && leads.length > 0) {
       const results = [];
       for (const singleLead of leads.slice(0, 100)) {
-        results.push(await pushSingle(brokerId, brokerConfig, handler, singleLead));
+        results.push(await pushSingle(brokerId, brokerConfig, handler, { ...singleLead }, countryCode));
       }
       return res.status(200).json({ results, count: results.length });
     }
 
     if (!lead) return res.status(400).json({ error: 'Missing lead or leads field' });
-    const result = await pushSingle(brokerId, brokerConfig, handler, lead);
+    const result = await pushSingle(brokerId, brokerConfig, handler, { ...lead }, countryCode);
     return res.status(result.status === 'success' ? 200 : 400).json(result);
+  },
+
+  // GET /api/supported-countries — list countries with IP generation support
+  'GET /supported-countries': async (req, res) => {
+    return res.status(200).json({ countries: getSupportedCountries() });
   },
 
   // GET /api/leads

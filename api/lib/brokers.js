@@ -12,8 +12,9 @@ const BROKERS = {
     authHeader: 'Api-Key',
     // Key comes from env: MEDIANOW_API_KEY
     envKey: 'MEDIANOW_API_KEY',
-    requiredFields: ['email', 'firstName', 'lastName', 'password', 'ip', 'phone'],
-    optionalFields: ['areaCode', 'custom1', 'custom2', 'custom3', 'custom4', 'custom5', 'comment', 'offerName', 'offerWebsite', 'locale'],
+    requiredFields: ['email', 'firstName', 'lastName', 'phone'],
+    autoFields: ['password', 'ip'], // auto-generated: password=static, ip=country-based
+    optionalFields: ['password', 'ip', 'areaCode', 'custom1', 'custom2', 'custom3', 'custom4', 'custom5', 'comment', 'offerName', 'offerWebsite', 'locale'],
   },
 
   // ── Add more brokers below ──────────────────────────────
